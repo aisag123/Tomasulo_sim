@@ -1,22 +1,11 @@
-#include <iostream>
 #include "tomasulo.h"
 
-int main(int, char **)
+int main()
 {
     Tomasulo sim;
 
     sim.init_instructions();
+    sim.simulate(8);
 
-    for (int cycle = 1; cycle <= 4; cycle++)
-    {
-        if (sim.issue_next())
-        {
-            std::cout << "Cycle " << cycle << ": Instruction Issued \n";
-        }
-        else
-        {
-            std::cout << "Cycle " << cycle << ": No Instruction Issued \n";
-        }
-    }
     return 0;
 }

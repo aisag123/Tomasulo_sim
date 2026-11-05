@@ -80,7 +80,8 @@ public:
     Tomasulo();
     void init_instructions();
     bool issue_next();
-    double execute(const ReservationStation &station);
+    bool dispatch_next();
+    void simulate(int cycles);
 
 private:
     Instruction instructions[4];
@@ -88,6 +89,9 @@ private:
     RF rf;
 
     double read_register(Register reg) const;
+    void write_register(Register reg, double value);
+    double execute(const ReservationStation &station) const;
+    void broadcast(int station_id, double value);
 
     int next_instruction = 0;
     int rat[10]{};
