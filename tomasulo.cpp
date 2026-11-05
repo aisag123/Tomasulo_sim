@@ -2,6 +2,11 @@
 #include <iostream>
 #include <stdexcept>
 
+Tomasulo::Tomasulo()
+    : rat{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
+{
+}
+
 void Tomasulo::init_instructions()
 {
     instructions[0] = {Op::ADD, Register::R1, Register::R2, Register::R3};
@@ -42,7 +47,62 @@ bool Tomasulo::issue_next()
 
     next_instruction++;
 
+    int source1 = static_cast<int>(instruction.source1);
+    int source2 = static_cast<int>(instruction.source2);
+    int destination = static_cast<int>(instruction.dest);
+
+    if (rat[source1] == -1)
+    {
+        station.source1_ready = true;
+        station.value1 = read_register(instruction.source1);
+    }
+    else
+    {
+        station.source1_tag = rat[source1];
+    }
+
+    if (rat[source2] == -1)
+    {
+        station.source2_ready = true;
+        station.value2 = read_register(instruction.source2);
+    }
+    else
+    {
+        station.source2_tag = rat[source2];
+    }
+
+    rat[destination] = station_id;
+
     return true;
+}
+
+double Tomasulo::read_register(Register reg) const
+{
+    switch (reg)
+    {
+    case Register::R1:
+        return rf.R1;
+    case Register::R2:
+        return rf.R2;
+    case Register::R3:
+        return rf.R3;
+    case Register::R4:
+        return rf.R4;
+    case Register::R5:
+        return rf.R5;
+    case Register::R6:
+        return rf.R6;
+    case Register::R7:
+        return rf.R7;
+    case Register::R8:
+        return rf.R8;
+    case Register::R9:
+        return rf.R9;
+    case Register::R10:
+        return rf.R10;
+    }
+
+    throw std::logic_error("invalid reg");
 }
 
 double Tomasulo::execute(const ReservationStation &station)
@@ -56,7 +116,7 @@ double Tomasulo::execute(const ReservationStation &station)
     case Op::MUL:
         return station.value1 * station.value2;
     case Op::DIV:
-        if (station.value1 || station.value2 == 0.0)
+        if (station.value2 == 0.0)
         {
             throw std::logic_error("Division by zero");
         }

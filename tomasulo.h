@@ -77,6 +77,7 @@ struct ReservationStation
 class Tomasulo
 {
 public:
+    Tomasulo();
     void init_instructions();
     bool issue_next();
     double execute(const ReservationStation &station);
@@ -84,9 +85,12 @@ public:
 private:
     Instruction instructions[4];
     ReservationStation stations[2];
+    RF rf;
+
+    double read_register(Register reg) const;
 
     int next_instruction = 0;
-    int register_status[10]{};
+    int rat[10]{};
     int add_sub_cc{2};
 };
 
