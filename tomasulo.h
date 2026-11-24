@@ -72,6 +72,8 @@ struct ReservationStation
 
     // src2 - tag
     int source2_tag = -1;
+
+    int cycles_remaining = 0;
 };
 
 class Tomasulo
@@ -85,13 +87,14 @@ public:
 
 private:
     Instruction instructions[4];
-    ReservationStation stations[2];
+    ReservationStation stations[4];
     RF rf;
 
     double read_register(Register reg) const;
     void write_register(Register reg, double value);
     double execute(const ReservationStation &station) const;
     void broadcast(int station_id, double value);
+    int stall(Op op) const;
 
     int next_instruction = 0;
     int rat[10]{};

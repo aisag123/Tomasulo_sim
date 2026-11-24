@@ -13,5 +13,13 @@ Reservation station
     |
     +--> RAT[ destination ] = this reservation station
 
+    i need to add the offsets for instructions
 
-    
+    add/sub - 2cc
+    mul - 10cc
+    div - 40cc
+
+    need to add the 4 RS 
+        - need 2 RS for add/sub
+        - need 2 for mul/div
+

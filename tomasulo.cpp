@@ -2,6 +2,26 @@
 #include <iostream>
 #include <stdexcept>
 
+namespace
+{
+const char *op_name(Op op)
+{
+    switch (op)
+    {
+    case Op::ADD:
+        return "ADD";
+    case Op::SUB:
+        return "SUB";
+    case Op::MUL:
+        return "MUL";
+    case Op::DIV:
+        return "DIV";
+    }
+
+    return "?";
+}
+}
+
 Tomasulo::Tomasulo()
     : rat{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 {
@@ -15,6 +35,22 @@ void Tomasulo::init_instructions()
     instructions[3] = {Op::DIV, Register::R8, Register::R9, Register::R10};
 }
 
+int Tomasulo::stall(Op op) const
+{
+    switch (op)
+    {
+    case Op::ADD:
+    case Op::SUB:
+        return 2;
+    case Op::MUL:
+        return 10;
+    case Op::DIV:
+        return 40;
+    }
+
+    throw ::std::logic_error("invalid operation");
+}
+
 bool Tomasulo::issue_next()
 {
     if (next_instruction >= 4)
@@ -24,7 +60,14 @@ bool Tomasulo::issue_next()
 
     int station_id = -1;
 
-    for (int i = 0; i < 2; i++)
+    const Instruction &instruction = instructions[next_instruction];
+    const bool is_add_sub = instruction.op == Op::ADD ||
+                            instruction.op == Op::SUB;
+
+    const int first_station = is_add_sub ? 0 : 2;
+    const int last_station = first_station + 2;
+
+    for (int i = first_station; i < last_station; ++i)
     {
         if (!stations[i].busy)
         {
@@ -38,12 +81,12 @@ bool Tomasulo::issue_next()
         return false;
     }
 
-    const Instruction &instruction = instructions[next_instruction];
     ReservationStation &station = stations[station_id];
 
     station.busy = true;
     station.op = instruction.op;
     station.dest = instruction.dest;
+    station.cycles_remaining = stall(instruction.op);
 
     next_instruction++;
 
@@ -55,30 +98,27 @@ bool Tomasulo::issue_next()
     {
         station.source1_ready = true;
         station.value1 = read_register(instruction.source1);
-        std::cout << "read reg for source 1 " << station.value1 << "\n";
     }
     else
     {
         station.source1_tag = rat[source1];
-        std::cout << "added tag to rat for source 1 " << station.value1 << "\n";
     }
 
     if (rat[source2] == -1)
     {
         station.source2_ready = true;
         station.value2 = read_register(instruction.source2);
-        std::cout << "read reg for source 2 " << station.value2 << "\n";
     }
     else
     {
         station.source2_tag = rat[source2];
-        std::cout << "added tag to rat for source 2 " << station.value2 << "\n";
     }
 
     rat[destination] = station_id;
-    std::cout << "station id: " << station_id << "\n";
-    std::cout << "Issue: instruction " << next_instruction
-              << " -> station " << station_id << "\n";
+    std::cout << "  Issue I" << next_instruction
+              << " (" << op_name(instruction.op) << ") -> RS"
+              << station_id << " [" << station.cycles_remaining
+              << " cycles]\n";
 
     return true;
 }
@@ -200,31 +240,42 @@ void Tomasulo::broadcast(int station_id, double value)
         }
     }
 
-    std::cout << "Broadcast: station " << station_id
-              << " -> result " << value << "\n";
+    std::cout << "  Write RS" << station_id << " -> "
+              << value << "\n";
 }
 
 bool Tomasulo::dispatch_next()
 {
-    for (int station_id = 0; station_id < 2; ++station_id)
+    bool dispatched = false;
+
+    for (int station_id = 0; station_id < 4; station_id++)
     {
         ReservationStation &station = stations[station_id];
 
-        if (!station.busy ||
-            !station.source1_ready ||
-            !station.source2_ready)
+        if (!station.busy || !station.source1_ready || !station.source2_ready)
         {
             continue;
         }
 
+        station.cycles_remaining--;
+
+        if (station.cycles_remaining > 0)
+        {
+            std::cout << "Execute: station " << station_id
+                      << " (" << station.cycles_remaining
+                      << " cycles left)\n";
+            dispatched = true;
+            continue;
+        }
+
         const double result = execute(station);
-        std::cout << "Dispatch: station " << station_id << "\n";
+        std::cout << "  Complete RS" << station_id << "\n";
         broadcast(station_id, result);
         station = ReservationStation{};
-        return true;
+        dispatched = true;
     }
 
-    return false;
+    return dispatched;
 }
 
 void Tomasulo::simulate(int cycles)
@@ -233,7 +284,7 @@ void Tomasulo::simulate(int cycles)
     {
         std::cout << "\nCycle " << cycle << '\n';
 
-        dispatch_next();
         issue_next();
+        dispatch_next();
     }
 }
